@@ -1,0 +1,57 @@
+{
+  "model": "opus",
+  "permissions": {
+    "allow_read": true,
+    "allow_write": true,
+    "allow_bash": true,
+    "allow_mcp": true
+  },
+  "context": {
+    "include_patterns": [
+      "CLAUDE.md",
+      "ai/backlog.md",
+      ".claude/contexts/*.md"
+    ],
+    "conditional": [
+      {
+        "pattern": "**/dao/**",
+        "include": ".claude/contexts/database.md"
+      },
+      {
+        "pattern": "**/entity/**",
+        "include": ".claude/contexts/database.md"
+      },
+      {
+        "pattern": "**/ui/**",
+        "include": ".claude/contexts/compose.md"
+      },
+      {
+        "pattern": "**/screens/**",
+        "include": ".claude/contexts/compose.md"
+      },
+      {
+        "pattern": "**/*Test.kt",
+        "include": ".claude/rules/testing.md"
+      }
+    ]
+  },
+  "skills": {
+    "enabled": [
+      "spark",
+      "autopilot",
+      "coder",
+      "tester",
+      "review",
+      "audit",
+      "scout"
+    ]
+  },
+  "agents": {
+    "enabled": [
+      "coder",
+      "tester",
+      "debugger",
+      "reviewer"
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Gym Assistant</string>
+    <string name="workout_tab">Workout</string>
+    <string name="history_tab">History</string>
+    <string name="progress_tab">Progress</string>
+    <string name="records_tab">Records</string>
+    <string name="add_set">Add Set</string>
+    <string name="weight_hint">Weight (kg)</string>
+    <string name="reps_hint">Reps</string>
+    <string name="select_exercise">Select Exercise</string>
+    <string name="no_workouts">No workouts yet</string>
+    <string name="personal_record">PR!</string>
+</resources>
