@@ -37,8 +37,9 @@ interface WorkoutSetDao {
     """)
     suspend fun getMaxWeightForExercise(exerciseId: Long): Float?
 
+    @SuppressWarnings("RoomWarnings.CURSOR_MISMATCH")
     @Query("""
-        SELECT * FROM workout_sets ws
+        SELECT ws.* FROM workout_sets ws
         INNER JOIN session_exercises se ON ws.sessionExerciseId = se.id
         WHERE se.exerciseId = :exerciseId AND ws.isPersonalRecord = 1
         ORDER BY ws.timestamp DESC

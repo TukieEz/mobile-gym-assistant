@@ -21,7 +21,7 @@ import com.gymassistant.data.local.entity.WorkoutSetEntity
         PersonalRecordEntity::class
     ],
     version = 2,
-    exportSchema = true
+    exportSchema = false
 )
 abstract class GymDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao

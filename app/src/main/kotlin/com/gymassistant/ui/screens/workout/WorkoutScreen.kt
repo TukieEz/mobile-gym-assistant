@@ -276,6 +276,7 @@ private fun ExerciseCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ExercisePickerContent(
     exercises: List<ExerciseEntity>,
