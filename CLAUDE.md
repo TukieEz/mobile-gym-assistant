@@ -154,9 +154,41 @@ app/src/main/kotlin/com/gymassistant/
 
 ---
 
+## References (в `references/`)
+
+Референсные проекты для изучения паттернов. НЕ коммитятся (в .gitignore).
+
+| Проект | Что взять | Путь |
+|--------|-----------|------|
+| **Workout-Tracker** | MVVM, Room schema, Session→Exercise→Set | `references/Workout-Tracker/` |
+| **PerfectGymCoach** | Material 3, Vico charts, MVI | `references/PerfectGymCoach/` |
+| **MyFit** | Prisma DB schema (web) | `references/MyFit/` |
+| **LiftShift** | UI components | `references/LiftShift/` |
+
+### Ключевые находки
+
+**Room Schema (Workout-Tracker):**
+```
+Session (sessionId, start, end)
+  └── SessionExercise (parentSessionId, parentExerciseId, order)
+        └── GymSet (reps, weight, time, distance, rpe)
+```
+
+**Exercise Model (PerfectGymCoach):**
+- `primaryMuscle: Muscle` enum
+- `secondaryMuscles: List<Muscle>`
+- `equipment: Equipment` enum
+- `difficulty: ExerciseDifficulty`
+
+**Charts:** Vico library (`com.patrykandpatrick.vico`)
+
+---
+
 ## Полезные ссылки
 
 - [Jetpack Compose](https://developer.android.com/jetpack/compose)
 - [Room](https://developer.android.com/training/data-storage/room)
 - [Hilt](https://developer.android.com/training/dependency-injection/hilt-android)
 - [Kotlin Coroutines](https://kotlinlang.org/docs/coroutines-overview.html)
+- [Vico Charts](https://patrykandpatrick.com/vico/)
+- [ExerciseDB API](https://github.com/ExerciseDB/exercisedb-api)
