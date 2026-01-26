@@ -12,8 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -23,8 +22,8 @@ data class WorkoutUiState(
     val activeSession: WorkoutSessionEntity? = null,
     val sessionExercises: List<SessionExerciseWithDetails> = emptyList(),
     val showExercisePicker: Boolean = false,
-    val currentWeight: String = "",
-    val currentReps: String = ""
+    val showSetInput: SessionExerciseWithDetails? = null,
+    val showRestTimer: Boolean = false
 )
 
 data class SessionExerciseWithDetails(
@@ -55,7 +54,11 @@ class WorkoutViewModel @Inject constructor(
                     isLoading = false,
                     activeSession = session
                 )
-                session?.let { loadSessionExercises(it.id) }
+                if (session != null) {
+                    loadSessionExercises(session.id)
+                } else {
+                    _uiState.value = _uiState.value.copy(sessionExercises = emptyList())
+                }
             }
         }
     }
@@ -65,11 +68,12 @@ class WorkoutViewModel @Inject constructor(
             repository.getSessionExercises(sessionId).collect { sessionExercises ->
                 val details = sessionExercises.mapNotNull { se ->
                     val exercise = repository.getExerciseById(se.exerciseId)
+                    val sets = repository.getSetsForSessionExercise(se.id).first()
                     exercise?.let {
                         SessionExerciseWithDetails(
                             sessionExercise = se,
                             exercise = it,
-                            sets = emptyList() // TODO: load sets
+                            sets = sets
                         )
                     }
                 }
@@ -115,17 +119,36 @@ class WorkoutViewModel @Inject constructor(
         }
     }
 
+    fun showSetInput(sessionExercise: SessionExerciseWithDetails) {
+        _uiState.value = _uiState.value.copy(showSetInput = sessionExercise)
+    }
+
+    fun hideSetInput() {
+        _uiState.value = _uiState.value.copy(showSetInput = null)
+    }
+
     fun addSet(sessionExerciseId: Long, weight: Float, reps: Int) {
         viewModelScope.launch {
             repository.addSet(sessionExerciseId, weight, reps)
+            // Reload session exercises to update UI
+            _uiState.value.activeSession?.let { loadSessionExercises(it.id) }
+            // Show rest timer after adding set
+            _uiState.value = _uiState.value.copy(showRestTimer = true, showSetInput = null)
         }
     }
 
-    fun updateWeight(value: String) {
-        _uiState.value = _uiState.value.copy(currentWeight = value)
+    fun showRestTimer() {
+        _uiState.value = _uiState.value.copy(showRestTimer = true)
     }
 
-    fun updateReps(value: String) {
-        _uiState.value = _uiState.value.copy(currentReps = value)
+    fun hideRestTimer() {
+        _uiState.value = _uiState.value.copy(showRestTimer = false)
+    }
+
+    fun deleteSet(setId: Long) {
+        viewModelScope.launch {
+            repository.deleteSet(setId)
+            _uiState.value.activeSession?.let { loadSessionExercises(it.id) }
+        }
     }
 }

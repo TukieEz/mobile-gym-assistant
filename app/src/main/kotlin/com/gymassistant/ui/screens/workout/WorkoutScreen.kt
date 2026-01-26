@@ -17,15 +17,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -41,6 +45,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gymassistant.data.local.entity.ExerciseEntity
+import com.gymassistant.ui.components.RestTimerDialog
+import com.gymassistant.ui.components.SetInputDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,19 +76,17 @@ fun WorkoutScreen(
         }
     ) { paddingValues ->
         if (uiState.activeSession == null) {
-            // No active session - show start button
             NoActiveSessionContent(
                 onStartWorkout = { viewModel.startWorkout() },
                 modifier = Modifier.padding(paddingValues)
             )
         } else {
-            // Active session - show exercises
             ActiveSessionContent(
                 uiState = uiState,
                 onFinishWorkout = { viewModel.finishWorkout() },
-                onAddSet = { sessionExerciseId, weight, reps ->
-                    viewModel.addSet(sessionExerciseId, weight, reps)
-                },
+                onAddSet = { sessionExercise -> viewModel.showSetInput(sessionExercise) },
+                onDeleteSet = { setId -> viewModel.deleteSet(setId) },
+                onShowTimer = { viewModel.showRestTimer() },
                 modifier = Modifier.padding(paddingValues)
             )
         }
@@ -99,6 +103,29 @@ fun WorkoutScreen(
                 onExerciseSelected = { viewModel.addExercise(it.id) }
             )
         }
+    }
+
+    // Set input dialog
+    uiState.showSetInput?.let { sessionExercise ->
+        val lastSet = sessionExercise.sets.lastOrNull()
+        SetInputDialog(
+            exerciseName = sessionExercise.exercise.name,
+            lastWeight = lastSet?.weight,
+            lastReps = lastSet?.reps,
+            onDismiss = { viewModel.hideSetInput() },
+            onConfirm = { weight, reps ->
+                viewModel.addSet(sessionExercise.sessionExercise.id, weight, reps)
+            }
+        )
+    }
+
+    // Rest timer dialog
+    if (uiState.showRestTimer) {
+        RestTimerDialog(
+            initialSeconds = 90,
+            onDismiss = { viewModel.hideRestTimer() },
+            onTimerFinished = { viewModel.hideRestTimer() }
+        )
     }
 }
 
@@ -145,7 +172,9 @@ private fun NoActiveSessionContent(
 private fun ActiveSessionContent(
     uiState: WorkoutUiState,
     onFinishWorkout: () -> Unit,
-    onAddSet: (Long, Float, Int) -> Unit,
+    onAddSet: (SessionExerciseWithDetails) -> Unit,
+    onDeleteSet: (Long) -> Unit,
+    onShowTimer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -164,20 +193,25 @@ private fun ActiveSessionContent(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "${uiState.sessionExercises.size} упражнений",
+                    text = "${uiState.sessionExercises.size} упражнений • ${uiState.sessionExercises.sumOf { it.sets.size }} подходов",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            OutlinedButton(onClick = onFinishWorkout) {
-                Icon(Icons.Default.Check, contentDescription = null)
+            Row {
+                FilledTonalIconButton(onClick = onShowTimer) {
+                    Icon(Icons.Default.Timer, contentDescription = "Таймер")
+                }
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Завершить")
+                OutlinedButton(onClick = onFinishWorkout) {
+                    Icon(Icons.Default.Check, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Готово")
+                }
             }
         }
 
         if (uiState.sessionExercises.isEmpty()) {
-            // No exercises yet
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -198,7 +232,6 @@ private fun ActiveSessionContent(
                 }
             }
         } else {
-            // Exercise list
             LazyColumn(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -206,11 +239,12 @@ private fun ActiveSessionContent(
                 items(uiState.sessionExercises) { item ->
                     ExerciseCard(
                         exerciseWithDetails = item,
-                        onAddSet = onAddSet
+                        onAddSet = { onAddSet(item) },
+                        onDeleteSet = onDeleteSet
                     )
                 }
                 item {
-                    Spacer(modifier = Modifier.height(80.dp)) // FAB space
+                    Spacer(modifier = Modifier.height(80.dp))
                 }
             }
         }
@@ -220,7 +254,8 @@ private fun ActiveSessionContent(
 @Composable
 private fun ExerciseCard(
     exerciseWithDetails: SessionExerciseWithDetails,
-    onAddSet: (Long, Float, Int) -> Unit
+    onAddSet: () -> Unit,
+    onDeleteSet: (Long) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -251,21 +286,51 @@ private fun ExerciseCard(
             } else {
                 exerciseWithDetails.sets.forEachIndexed { index, set ->
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("${index + 1}.")
-                        Text("${set.weight} кг")
-                        Text("${set.reps} повт")
+                        Text(
+                            text = "${index + 1}.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.width(24.dp)
+                        )
+                        Text(
+                            text = "${set.weight} кг",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "×",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "${set.reps}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        IconButton(
+                            onClick = { onDeleteSet(set.id) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Удалить",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
                 }
             }
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Quick add button (simplified for MVP)
             Button(
-                onClick = { onAddSet(exerciseWithDetails.sessionExercise.id, 50f, 10) },
+                onClick = onAddSet,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Default.Add, contentDescription = null)
