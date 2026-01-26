@@ -2,53 +2,47 @@ package com.gymassistant.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import com.gymassistant.data.local.entity.WorkoutSetEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface WorkoutSetDao {
 
-    @Insert
+    @Query("SELECT * FROM workout_sets WHERE sessionExerciseId = :sessionExerciseId ORDER BY setOrder ASC")
+    fun getSetsForSessionExercise(sessionExerciseId: Long): Flow<List<WorkoutSetEntity>>
+
+    @Query("SELECT * FROM workout_sets WHERE id = :id")
+    suspend fun getSetById(id: Long): WorkoutSetEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSet(set: WorkoutSetEntity): Long
 
-    @Query("""
-        SELECT * FROM workout_sets 
-        WHERE timestamp >= :startOfDay AND timestamp < :endOfDay
-        ORDER BY timestamp DESC
-    """)
-    fun getSetsForDay(startOfDay: Long, endOfDay: Long): Flow<List<WorkoutSetEntity>>
-
-    @Query("""
-        SELECT * FROM workout_sets 
-        WHERE exerciseId = :exerciseId
-        ORDER BY timestamp DESC
-    """)
-    fun getSetsForExercise(exerciseId: Long): Flow<List<WorkoutSetEntity>>
-
-    @Query("""
-        SELECT * FROM workout_sets 
-        WHERE exerciseId = :exerciseId 
-        AND timestamp >= :startTime AND timestamp <= :endTime
-        ORDER BY timestamp ASC
-    """)
-    fun getSetsForExerciseInRange(
-        exerciseId: Long,
-        startTime: Long,
-        endTime: Long
-    ): Flow<List<WorkoutSetEntity>>
-
-    @Query("SELECT MAX(weight) FROM workout_sets WHERE exerciseId = :exerciseId")
-    suspend fun getMaxWeightForExercise(exerciseId: Long): Float?
+    @Update
+    suspend fun updateSet(set: WorkoutSetEntity)
 
     @Query("DELETE FROM workout_sets WHERE id = :id")
     suspend fun deleteSet(id: Long)
 
+    @Query("SELECT COALESCE(MAX(setOrder), -1) + 1 FROM workout_sets WHERE sessionExerciseId = :sessionExerciseId")
+    suspend fun getNextSetOrder(sessionExerciseId: Long): Int
+
+    // Stats queries
     @Query("""
-        SELECT DISTINCT date(timestamp / 1000, 'unixepoch', 'localtime') as workoutDate
-        FROM workout_sets
-        ORDER BY timestamp DESC
-        LIMIT :limit
+        SELECT MAX(weight) FROM workout_sets ws
+        INNER JOIN session_exercises se ON ws.sessionExerciseId = se.id
+        WHERE se.exerciseId = :exerciseId AND ws.isWarmup = 0
     """)
-    fun getRecentWorkoutDates(limit: Int = 30): Flow<List<String>>
+    suspend fun getMaxWeightForExercise(exerciseId: Long): Float?
+
+    @Query("""
+        SELECT * FROM workout_sets ws
+        INNER JOIN session_exercises se ON ws.sessionExerciseId = se.id
+        WHERE se.exerciseId = :exerciseId AND ws.isPersonalRecord = 1
+        ORDER BY ws.timestamp DESC
+        LIMIT 10
+    """)
+    fun getPersonalRecordsForExercise(exerciseId: Long): Flow<List<WorkoutSetEntity>>
 }
