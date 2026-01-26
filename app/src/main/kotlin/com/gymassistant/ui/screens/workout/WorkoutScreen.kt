@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -33,12 +34,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -347,6 +352,24 @@ private fun ExercisePickerContent(
     exercises: List<ExerciseEntity>,
     onExerciseSelected: (ExerciseEntity) -> Unit
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+    
+    val filteredExercises = remember(exercises, searchQuery) {
+        if (searchQuery.isBlank()) {
+            exercises
+        } else {
+            exercises.filter { 
+                it.name.contains(searchQuery, ignoreCase = true) ||
+                it.muscleGroup.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
+    
+    // Group by muscle group
+    val groupedExercises = remember(filteredExercises) {
+        filteredExercises.groupBy { it.muscleGroup }
+    }
+
     Column(modifier = Modifier.padding(16.dp)) {
         Text(
             text = "Выбери упражнение",
@@ -354,43 +377,63 @@ private fun ExercisePickerContent(
             modifier = Modifier.padding(bottom = 16.dp)
         )
         
+        // Search field
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Поиск...") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            singleLine = true
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
         if (exercises.isEmpty()) {
             Text(
                 text = "Нет упражнений. Добавь их в настройках.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else if (filteredExercises.isEmpty()) {
+            Text(
+                text = "Ничего не найдено",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(exercises) { exercise ->
-                    Card(
-                        onClick = { onExerciseSelected(exercise) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                groupedExercises.forEach { (muscleGroup, exercisesInGroup) ->
+                    item {
+                        Text(
+                            text = muscleGroup,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                    items(exercisesInGroup) { exercise ->
+                        Card(
+                            onClick = { onExerciseSelected(exercise) },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Text(
                                     text = exercise.name,
                                     style = MaterialTheme.typography.titleMedium
                                 )
-                                Text(
-                                    text = exercise.muscleGroup,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = "Добавить",
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = "Добавить",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
                         }
                     }
                 }
