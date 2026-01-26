@@ -80,10 +80,10 @@ fun RestTimerDialog(
                     modifier = Modifier.size(150.dp)
                 ) {
                     CircularProgressIndicator(
-                        progress = { progress },
+                        progress = progress,
                         modifier = Modifier.size(150.dp),
                         strokeWidth = 8.dp,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = formatTime(remainingSeconds),
