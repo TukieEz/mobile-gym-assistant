@@ -58,6 +58,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideWorkoutSetDao(db: GymDatabase): WorkoutSetDao = db.workoutSetDao()
+
+    @Provides
+    @Singleton
+    fun providePersonalRecordDao(db: GymDatabase): com.gymassistant.data.local.dao.PersonalRecordDao = 
+        db.personalRecordDao()
 }
 
 private fun getDefaultExercises(): List<ExerciseEntity> = listOf(
