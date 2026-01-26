@@ -71,11 +71,6 @@ cd mobile-gym-assistant
 - [ ] Progress Charts
 - [ ] Personal Records
 
-## 👥 Команда
-
-- **Динар** — Android/Frontend
-- **Ильнур** — Backend (будущее API)
-
 ## 📄 License
 
 MIT
